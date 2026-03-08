@@ -1,0 +1,43 @@
+<div class="ui-overlay pointer-events-none">
+    
+    <!-- Top Navigation -->
+    <header class="top-nav pointer-events-auto">
+        <h1 class="logo">My 3D Portfolio</h1>
+        <nav class="desktop-only">
+            <a href="#about">About</a>
+            <a href="#projects">Projects</a>
+            <a href="#contact">Contact</a>
+        </nav>
+        <button class="mobile-only menu-btn">☰</button>
+    </header>
+
+    <!-- Contextual Info Panel (Populated by C# State) -->
+    @if (!string.IsNullOrEmpty(SelectedProject))
+    {
+        <div class="project-details pointer-events-auto fade-in">
+            <h2>@SelectedProject</h2>
+            <p>This panel appeared because you interacted with the 3D scene.</p>
+            <button @onclick="ClosePanel" class="btn-primary">Close</button>
+        </div>
+    }
+
+    <!-- Interaction Hint -->
+    <div class="interaction-hint">
+        <p class="desktop-only">Click and Drag to Rotate | Scroll to Zoom</p>
+        <p class="mobile-only">Swipe to Rotate | Pinch to Zoom</p>
+    </div>
+
+</div>
+
+@code {
+    [Parameter]
+    public string SelectedProject { get; set; }
+
+    [Parameter]
+    public EventCallback OnPanelClosed { get; set; }
+
+    private async Task ClosePanel()
+    {
+        await OnPanelClosed.InvokeAsync();
+    }
+}
