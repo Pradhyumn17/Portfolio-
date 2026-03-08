@@ -1,0 +1,55 @@
+@using Portfolio3D.Services
+@inject ThreeJsService ThreeService
+@inject IJSRuntime JSRuntime
+@implements IAsyncDisposable
+
+<div class="canvas-container">
+    <canvas id="main-3d-canvas"></canvas>
+</div>
+
+@code {
+    private DotNetObjectReference<ThreeDCanvas> _objRef;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // Initialize 3D Engine
+            await ThreeService.InitializeAsync("main-3d-canvas");
+
+            // Setup C# Window Resize Listener via lightweight inline JS
+            _objRef = DotNetObjectReference.Create(this);
+            await JSRuntime.InvokeVoidAsync("eval", $@"
+                window.addEventListener('resize', () => {{
+                    DotNet.invokeMethodAsync('{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name}', 'OnWindowResizeCallback', window.innerWidth, window.innerHeight);
+                }});
+                // Trigger initial calculation
+                window.dispatchEvent(new Event('resize'));
+            ");
+        }
+    }
+
+    /// <summary>
+    /// Invoked from JS when the browser window resizes or changes orientation.
+    /// Calculates optimal FOV and updates the 3D engine.
+    /// </summary>
+    [JSInvokable("OnWindowResizeCallback")]
+    public async Task HandleWindowResize(int width, int height)
+    {
+        bool isMobile = width < 768;
+        bool isPortrait = height > width;
+
+        // Dynamic FOV Calculation based on View Mode
+        // Wider FOV for portrait/mobile to ensure the 3D object stays on screen
+        float optimalFov = isMobile && isPortrait ? 90f : 75f;
+
+        // Send new dimensions and FOV back to the 3D Engine
+        await ThreeService.UpdateCameraSettingsAsync(width, height, optimalFov);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_objRef != null) _objRef.Dispose();
+        await ThreeService.DisposeAsync();
+    }
+}
