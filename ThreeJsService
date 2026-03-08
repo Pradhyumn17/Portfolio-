@@ -1,0 +1,82 @@
+using Microsoft.JSInterop;
+using System;
+using System.Threading.Tasks;
+
+namespace Portfolio3D.Services
+{
+    /// <summary>
+    /// Service acting as the JSInterop layer between Blazor C# and the Three.js JavaScript engine.
+    /// Handles asynchronous commands sent to the 3D canvas and sets up C# callbacks for user interactions.
+    /// </summary>
+    public class ThreeJsService : IAsyncDisposable
+    {
+        private readonly IJSRuntime _jsRuntime;
+        private IJSObjectReference _module;
+        private DotNetObjectReference<ThreeJsService> _objRef;
+
+        // C# Events triggered by 3D interactions
+        public event Action<string> OnObjectClicked;
+        public event Action<float> OnZoomAdjusted;
+
+        public ThreeJsService(IJSRuntime jsRuntime)
+        {
+            _jsRuntime = jsRuntime;
+        }
+
+        /// <summary>
+        /// Loads the JS module and initializes the Three.js scene on the specified canvas.
+        /// </summary>
+        public async Task InitializeAsync(string canvasId)
+        {
+            // Load the interop module
+            _module = await _jsRuntime.InvokeAsync<IJSObjectReference>("import", "./js/threejs-interop.js");
+            
+            // Create a reference to this C# instance to allow JS to call back into C#
+            _objRef = DotNetObjectReference.Create(this);
+            
+            // Initialize the 3D engine, passing the canvas ID and the C# reference
+            await _module.InvokeVoidAsync("initThreeJs", canvasId, _objRef);
+        }
+
+        /// <summary>
+        /// Adjusts the camera's aspect ratio and Field of View (FOV) based on screen size/orientation.
+        /// </summary>
+        public async Task UpdateCameraSettingsAsync(int width, int height, float fov)
+        {
+            if (_module != null)
+            {
+                await _module.InvokeVoidAsync("updateCamera", width, height, fov);
+            }
+        }
+
+        /// <summary>
+        /// Called from JavaScript when a raycasted object is clicked or tapped.
+        /// </summary>
+        [JSInvokable]
+        public void HandleObjectClick(string objectId)
+        {
+            OnObjectClicked?.Invoke(objectId);
+        }
+
+        /// <summary>
+        /// Called from JavaScript during a pinch-to-zoom or scroll wheel interaction.
+        /// </summary>
+        [JSInvokable]
+        public void HandleZoom(float newZoomLevel)
+        {
+            OnZoomAdjusted?.Invoke(newZoomLevel);
+        }
+
+        public async ValueTask DisposeAsync()
+        {
+            if (_objRef != null)
+            {
+                _objRef.Dispose();
+            }
+            if (_module != null)
+            {
+                await _module.DisposeAsync();
+            }
+        }
+    }
+}
