@@ -1,0 +1,44 @@
+@page "/"
+@using Portfolio3D.Components
+@using Portfolio3D.Services
+@inject ThreeJsService ThreeService
+@implements IDisposable
+
+<PageTitle>3D Interactive Portfolio</PageTitle>
+
+<main class="portfolio-container">
+    <!-- 3D Canvas Layer (Z-Index 0) -->
+    <ThreeDCanvas />
+
+    <!-- UI Overlay Layer (Z-Index 10) -->
+    <ResponsiveUI SelectedProject="@activeProjectId" OnPanelClosed="HandlePanelClosed" />
+</main>
+
+@code {
+    private string activeProjectId;
+
+    protected override void OnInitialized()
+    {
+        // Subscribe to events coming from the 3D Javascript engine
+        ThreeService.OnObjectClicked += HandleObjectClicked;
+    }
+
+    private void HandleObjectClicked(string objectId)
+    {
+        // Update Blazor state based on 3D interaction
+        activeProjectId = objectId;
+        StateHasChanged(); // Trigger UI re-render
+    }
+
+    private void HandlePanelClosed()
+    {
+        activeProjectId = null;
+        // Logic to reset 3D camera could go here
+    }
+
+    public void Dispose()
+    {
+        // Prevent memory leaks
+        ThreeService.OnObjectClicked -= HandleObjectClicked;
+    }
+}
